@@ -1,0 +1,11 @@
+.env
+.cache/
+__pycache__/
+*.pyc
+
+# Iteration 1 ("Embracing the Novelty of Noise") — deliberately separated, not part of this repo
+_NOT_FOR_ITERATION_2_DO_NOT_READ/
+
+# Korpusinnehåll (PDF/.txt-källfiler) hålls lokalt, inte i molnet — endast
+# manifest/beskrivningar (corpus_manifest_*.md m.fl.) versionshanteras.
+corpora/*/files/

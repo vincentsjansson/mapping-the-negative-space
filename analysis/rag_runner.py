@@ -25,19 +25,22 @@ from analysis.diversity import _l2_normalize
 from analysis.gap_detection import compute_gaps, _k_candidates
 
 
-PROMPT_TEMPLATE = """Du är en domänexpert som läser utdrag ur en klinisk WHO-riktlinjekorpus.
+# D-024: engelska, för att matcha korpusens språk (svensk generering mot
+# engelsk korpus var en bevisad cross-lingual confound, se D-024).
+PROMPT_TEMPLATE = """You are a domain expert reading excerpts from a corpus of documents.
 
-DOMÄNKONTEXT:
+DOMAIN CONTEXT:
 {domain_context}
 
-UTDRAG UR KORPUSEN (närliggande, men INTE identiska, källchunkar):
+EXCERPTS FROM THE CORPUS (nearby, but NOT identical, source chunks):
 {source_excerpts}
 
-UPPGIFT: Baserat ENDAST på utdragen ovan, formulera EN specifik, konkret
-täckningslucka — ett ämne, en population, eller en skärningspunkt mellan
-utdragen som korpusen INTE verkar adressera. Var specifik och konkret (namnge
-population/miljö/åtgärd om möjligt). Undvik generiska floskler eller att bara
-sammanfatta utdragen. Svara med 2-4 meningar, inget annat."""
+TASK: Based ONLY on the excerpts above, formulate ONE specific, concrete
+coverage gap — a topic, a population, or an intersection between the
+excerpts that the corpus does NOT appear to address. Be specific and
+concrete (name a population/setting/intervention where possible). Avoid
+generic platitudes or simply summarizing the excerpts. Answer in 2-4
+sentences, nothing else."""
 
 
 @dataclass

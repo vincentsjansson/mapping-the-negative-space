@@ -39,6 +39,23 @@ EMBEDDING_DIM = 384
 # Inget CLUSTER_COS_DIST_THRESHOLD. Arbeta direkt mot GapDetectionResult.regions.
 SKIP_CLUSTERING = True
 
+# D-015: global standard-gap-detektion, låst på ett värsta-fall-kriterium (inte
+# bästa snitt/topp) efter D-013:s bakeoff gav oavgjort på "bäst konsekvent
+# överallt". void_stat + rått MiniLM (ingen whitening, D-016 RESOLVED — ingen
+# automatisk whitening-regel) + sqrt-k är den enda kombinationen vars sämsta
+# korpus inte kollapsar. sqrt-k avgör därmed ÄVEN D-004:s öppna k-fråga för
+# standardmetoden (samma värsta-fall-kriterium, se D-015-noteringen).
+# Explicit motiverat efterhandsval, inte ett rent pre-registrerat urval — se
+# D-015 i beslutslogg.md för fullständig transparensnotering.
+DEFAULT_GAP_METHOD = "void_stat"
+DEFAULT_EMBEDDING_SPACE = "minilm"  # rått, ingen whitening (D-016 RESOLVED)
+DEFAULT_K_CANDIDATE = "sqrt"
+# Per-korpus leave-one-out med denna frysta konfiguration är ENBART diagnostik
+# (D-015 per-korpus-regel) — får ALDRIG användas för att välja om metod/k/
+# embedding på en specifik korpus. Ett svagt diagnostiskt utfall kräver antingen
+# (a) rapporterad försiktighet, eller (b) ett nytt, dokumenterat D-beslut FÖRE
+# någon inspektion av de faktiska luckorna — aldrig en tyst omväljning.
+
 # Kontrollkohort (D-001 Lager 1): obligatorisk, lika stor som gap-kohorten,
 # identisk pipeline, slumpmässigt vald.
 CONTROL_COHORT_ENABLED = True
@@ -188,7 +205,7 @@ CORPUS_CONFIGS = {
         "level1_match_threshold": None,
         "domain_adapter_examples": None,
         "leave_one_out_result": None,
-        "phase2_locked_temperatures": None,
+        "phase2_locked_temperatures": (0.2, 0.5, 0.9),  # Steg 0.5.8 (D-002) — FALLBACK, D-017 RESOLVED: fasövergång flaggad men överlevde inte robusthetskontrollen (bootstrap-stabilitet ≤60%, effekt/brus-kvot <1)
         "reproducibility_status": "public",  # IETF Trust/BCP 78 (D-008)
     },
     "c3_education": {
@@ -201,7 +218,7 @@ CORPUS_CONFIGS = {
         "level1_match_threshold": None,
         "domain_adapter_examples": None,
         "leave_one_out_result": None,
-        "phase2_locked_temperatures": None,
+        "phase2_locked_temperatures": (0.2, 0.5, 0.9),  # Steg 0.5.8 (D-002) — FALLBACK, D-017 RESOLVED: fasövergång flaggad men överlevde inte robusthetskontrollen (bootstrap-stabilitet ≤70%, effekt/brus-kvot ~0.4-1.3)
         "reproducibility_status": "public",  # CC BY-SA 3.0 IGO (D-008)
     },
 }

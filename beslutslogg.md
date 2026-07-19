@@ -4,7 +4,7 @@
 > ändrar/kompletterar det. Negativa/inkonklusiva resultat loggas lika öppet som positiva.
 > Egen D-serie, helt skild från "Embracing the Novelty of Noise" (iteration 1).
 >
-> **Nästa lediga beslutsnummer: D-025.**
+> **Nästa lediga beslutsnummer: D-026.**
 >
 > Full text och resonemang för D-001 finns i `docs/rag_kohort_preregistrering_v3.md` (Del B),
 > för D-002–D-009 i `docs/rag_kohort_tillagg_v4.md`. Denna logg är den incheckade,
@@ -1043,6 +1043,34 @@
 - **Påverkar:** `analysis/rag_runner.py`, `analysis/domain_adapter.py`,
   `analysis/gap_verification.py`, `beslutslogg.md`. Nästa steg: validera D-023:s
   `judge_coverage()` mot samma stil-matchade engelska ankare.
+
+---
+
+## D-025 (FÖRSLAG) — Parallellisera sond-körningen på region-nivå (körningsoptimering, ingen ändring av experimentets parametrar)
+
+- **Datum:** 2026-07-16
+- **Kategori:** Infrastruktur / körning (påverkar INTE experimentdesignen)
+- **Fråga:** Sonden tar ~35–40 min sekventiellt. Kan körningen parallelliseras utan att
+  påverka giltigheten?
+- **Beslut:** Parallellisera på region-nivå: `ThreadPoolExecutor(max_workers=5)`, egna
+  klienter per tråd, exponentiell backoff-retry mot `RateLimitError` (5 försök + jitter),
+  trådsäker checkpoint-skrivning (`threading.Lock`), skip-and-resume vid regionfel.
+- **Varför giltigheten inte påverkas:** regionvalet är seed-låst (2026) och bit-för-bit
+  identiskt oavsett parallellisering; alla parametrar oförändrade (temperaturer D-017, båda
+  modeller, exkluderingsfönster, Nivå 1-domare top_k=30 D-023, Nivå 2-domare);
+  region-nivå-äkthetsmåttet (D-019 C) är ordnings-oberoende; LLM-genereringen var redan
+  körning-till-körning stokastisk (temp > 0), så parallell vs sekventiell ändrar inte
+  experimentets natur.
+- **OBLIGATORISK fullständighets-spärr:** d̂ beräknas ALDRIG på en partiell körning. Före
+  analys, verifiera att alla 40 regioner (20 gles + 20 slump) finns i checkpointen; har någon
+  region misslyckats och hoppats över, återuppta tills alla 40 är klara. Rapportera antalet
+  färdiga regioner explicit.
+- **Förbjudet:** tolka d̂ på färre än 40 regioner; ändra någon experiment-parameter i samband
+  med parallelliseringen.
+- **Beslutat av:** Vincent.
+- **Påverkar:** sond-skriptets körningsinfrastruktur. Ändrar inte D-015/D-017/D-019/D-023.
+- **STATUS: FÖRSLAG.** Ingen betald sond körd. Fullständighets-spärren verifieras i koden
+  innan genomförande.
 
 ---
 

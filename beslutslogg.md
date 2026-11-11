@@ -4,7 +4,7 @@
 > ändrar/kompletterar det. Negativa/inkonklusiva resultat loggas lika öppet som positiva.
 > Egen D-serie, helt skild från "Embracing the Novelty of Noise" (iteration 1).
 >
-> **Nästa lediga beslutsnummer: D-026.**
+> **Nästa lediga beslutsnummer: D-029.**
 >
 > Full text och resonemang för D-001 finns i `docs/rag_kohort_preregistrering_v3.md` (Del B),
 > för D-002–D-009 i `docs/rag_kohort_tillagg_v4.md`. Denna logg är den incheckade,
@@ -1074,6 +1074,238 @@
 
 ---
 
+## D-026 (FÖRSLAG) — Ren associations-test: skilj "är hålet en lucka?" (geometri) från "kan vi fylla hålet?" (siktning)
+
+- **Datum:** 2026-07-16
+- **Kategori:** Metod / grundpremiss (uppföljning av D-025)
+- **Fråga:** D-025 gav ett negativt sammansatt resultat men kunde inte skilja två felmoder: (A)
+  hålen är verkliga luckor men genereringen siktar dåligt, vs (B) geometrisk gleshet ≠ saknat
+  innehåll. Vilken gäller? Detta avgör om projektet har en väg framåt eller ett slutfynd.
+- **Design — två oberoende armar, var med ett rent facit-mått:**
+  - **Arm 1 (geometri/association, ingen LLM) — testar Mod B:**
+    (a) Karakterisera `void_stat`s topp-flaggade glesa regioner: vilken andel är strukturellt
+    icke-innehåll (boilerplate, metadata, tabeller, referenslistor) vs genuint tunt innehåll?
+    Klassas objektivt (källchunkarnas innehåll), på hela gles-rankningen — inte bara sondens
+    40.
+    (b) Facit-test: ta bort ett pre-registrerat antal kända, innehållsrika, tematiskt distinkta
+    sektioner (ej boilerplate). Mät om deras plats rankas högre i `void_stat`s gleshet än (i)
+    boilerplate-regionerna och (ii) slumplägen. Rent geometriskt (D-011:s rank/N-maskineri).
+  - **Arm 2 (siktning, LLM med facit) — testar Mod A:**
+    För varje borttagen sektion, sikta generatorn mot dess plats (via de gränsande chunkarna /
+    interpolation mellan grannklustren, inte bara "hitta en lucka") och be den beskriva vad som
+    saknas. Mät likheten mellan det genererade och det faktiskt borttagna innehållet
+    (embedding-likhet + LLM-domare). Återfinner den det borttagna ämnet?
+- **Tolkning (låst innan körning):**
+  - Arm 1 faller (gleshet skiljer inte kända luckor från boilerplate/slump) → Mod B: premissen
+    håller inte. Skriv upp varför; ingen mening att förbättra siktningen.
+  - Arm 1 håller men Arm 2 faller → Mod A: siktningen är flaskhalsen. Embeddning-styrd/
+    kontrastiv generering blir nästa (nytt) experiment.
+  - Båda håller → D-025:s negativa berodde på något annat (t.ex. tunn kontext för glesa
+    regioner); ompröva.
+- **Förbjudet:** välja borttagna sektioner eller boilerplate-definitionen efter att ha sett
+  utfallet; tolka detta som en räddning av D-025:s negativa (som står oförändrat).
+- **Kostnad:** Arm 1 ren geometri (gratis). Arm 2 en handfull LLM-anrop per sektion (litet).
+- **Beslutat av:** Vincent.
+- **Påverkar:** ny analys-modul, `beslutslogg.md`. Ändrar inte D-025.
+- **STATUS: FÖRSLAG.** Inget byggt eller kört. Väntar på Vincents granskning av
+  boilerplate-klassificeringen, sektionsurvalet och siktningsmekanismen (nedan) innan
+  genomförande.
+
+**Skärpningar (2026-07-16, före körning):**
+1. Arm 1a rapporterar boilerplate-**anrikning** (andel strukturellt-icke-innehåll i topp-glesa
+   vs korpus-baslinje) som huvudmått, inte den absoluta andelen.
+2. Arm 1b (ren geometri) använder ALLA sektioner som klarar ≥15-chunkskravet, inte bara 5.
+   Arm 2 (LLM, kostar anrop) behåller 5.
+3. Arm 2:s domare (mätning b) bedömer om det SPECIFIKA innehållet/omfånget återfinns, inte
+   bara bred ämnesträff.
+
+**Verktygsvalidering (2026-07-19, före körning):**
+- Boilerplate-filter spot-checkat på 5 kända boilerplate- + 5 kända innehållschunkar: 9/10
+  korrekt (5/5 innehåll rätt klassat, inga falska positiva; 4/5 boilerplate rätt klassat, ett
+  missat fall: mhGAP chunk 1, titelsidesfragment utan nyckelordsmarkör). Filtret lämnat
+  ojusterat efter spot-check (ingen efterhandsanpassning till det missade fallet).
+- Sektionsurval: mekanisk, layout-baserad regel (sidans första unika textrad per
+  pdfplumber-sida, char-offset-mappad till `_chunk()`s faktiska chunk-position; validerad mot
+  känd SUI-modulplacering, avvikelse ~2 chunkar). 38 sektioner klarar ≥15-chunkskravet
+  (18 mhGAP + 14 PhysAct + 6 IPC) → Arm 1b:s fullständiga urval.
+  Arm 2:s 5 sektioner valda via round-robin över de tre dokumenten (IPC→PhysAct→mhGAP→
+  IPC→PhysAct, i vardera dokuments interna ordning): IPC 57–144 (Executive Summary), PhysAct
+  64–127 (Children and adolescents), mhGAP 8–55 (Preface), IPC 172–236 (Methods), PhysAct
+  128–198 (Pregnant and postpartum women).
+- **STATUS: GODKÄNT av Vincent 2026-07-19.** Boilerplate-filter och sektionsurval granskade
+  och bekräftade. Klart för genomförande av Arm 1a, 1b och 2.
+
+**Resultat (2026-07-19), ren geometri, gratis:**
+- **Arm 1a (boilerplate-anrikning):** korpus-baslinje 8,7 % strukturellt-icke-innehåll,
+  gles-kohort (topp-20, `void_stat`) 5,0 % → anrikningskvot 0,576 — **fel riktning** (glesa
+  regioner har LÄGRE boilerplate-andel än korpusen i snitt, inte högre). Känd
+  recall-svaghet i klassificeraren (samma typ av missat fall som spot-checken redan
+  flaggade, t.ex. region 1961 — bekräftat boilerplate i D-025:s sekundära diagnostik men
+  missad av textfiltret) gör att 0,576 sannolikt underskattar sant värde; även med grov
+  manuell korrigering (2/20 mot 8,7 % baslinje) blir kvoten ~1,15 — svag eller ingen
+  anrikning, inte den starka signal Mod B skulle kräva.
+- **Arm 1b (rent geometriskt facit-test, 38 sektioner, D-011:s låsta rank/N-maskineri):**
+  kända sektioner `best_rank_fraction` mean=0,260/median=0,151 (0=mest gap-lik) vs matchad
+  slumpkontroll mean=0,318/median=0,248. Mann-Whitney (real < random): p=0,182 — riktningen
+  stödjer svagt att kända sektioner är mer gap-lika än slump, **inte statistiskt
+  signifikant** (n=38).
+
+**Resultat (2026-07-19), Arm 2 (LLM-siktning, 5 sektioner, 10 anrop):**
+- 1/5 `scope_recovered`, 1/5 `topic_only`, **3/5 `not_recovered`**.
+- Ingen tydlig korrelation mellan embedding-centroid-likhet och domarens
+  omfångsbedömning (t.ex. "Methods"-sektionen hade högst centroid-likhet, 0,608, men
+  bedömdes ändå inte återfinna omfånget — generatorn gissade fel innehållstyp trots hög
+  ytlig likhet).
+- Den enda fullträffen ("Preface", mhGAP) har en trivial förklaring: gränskontexten
+  innehöll bokstavligen en trunkerad innehållsförteckning (TOC-läckage), vilket gjorde
+  siktningen näst intill mekanisk snarare än genuin inferens — inte representativt för de
+  övriga fyra.
+
+**Tolkning:** Passar inte rent i någon av de tre förhandsdefinierade tolkningsgrenarna
+(Arm 1 faller entydigt / Arm 1 håller men Arm 2 faller / båda håller). Utfallet är
+**inkonklusivt relativt dessa tre grenar** — Arm 1 ger varken en tydlig bekräftelse eller
+ett tydligt avfärdande (svag, icke-signifikant riktning; boilerplate-anrikning i fel
+riktning men med känd mätosäkerhet), och Arm 2 klarar inte specifikt omfång i majoriteten
+av fallen (3/5) med den enda fullträffen trivialt förklarad. Det sammanhängande praktiska
+fyndet, även om det inte var en förhandsdefinierad utfallsgren: **både detektionssteget
+(Arm 1) och genereringssteget (Arm 2) är svaga**, var för sig och oberoende av varandra —
+inget av dem ger ett starkt signal att bygga vidare på. D-025:s negativa huvudresultat
+kvarstår oförklarat av någon av de två föreslagna felmoderna i sin renodlade form.
+- **STATUS: GENOMFÖRT 2026-07-19.** Arm 1a, 1b och 2 körda och rapporterade, inklusive
+  negativt/inkonklusivt utfall, i sin helhet. Rådata: `.cache/d026_arm1a_result.json`,
+  `.cache/d026_arm1b_result.json`, `.cache/d026_arm2_result.json`,
+  `.cache/d026_sections_mechanical.json`.
+
+---
+
+## D-027 — Bisociationstest mellan täta kluster (sista test innan projektet avslutas)
+
+- **Datum:** 2026-07-19
+- **Kategori:** Metod / grundpremiss (sista prövning, uppföljning av D-025/D-026)
+- **Fråga:** D-025/D-026 gav ett negativt/inkonklusivt resultat för hela "gleshet = saknat
+  innehåll"-premissen. Finns det en HELT ANNAN mekanism i samma korpus/tooling som ger ett
+  positivt fynd innan projektet avslutas: inte hitta glesa hål, utan generera en genuint
+  icke-trivial koppling MELLAN korpusens bäst täckta (tätaste) men tematiskt åtskilda
+  områden ("bisociation", Koestler-sinnad — kombination av två annars separata
+  referensramar)?
+- **Design (mekanisk, inget manuellt urval):**
+  1. Densitet i stället för gleshet: `void_severity`s LÄGST rankade chunkar (tätast lokalt
+     grannskap + närmast centroid) = "täta" chunkar.
+  2. K-means-klustring (K≈6–8) av de täta chunkarna → distinkta, väl täckta
+     tema-centroider.
+  3. Para de tematiskt MEST AVLÄGSNA klusterparen (cosine-avstånd mellan centroider,
+     fallande sortering, topp-N par) — inget urval efter vilken koppling paret genererar.
+  4. Generering: LLM ges representativa utdrag från båda kluster, ombeds föreslå EN
+     specifik, konkret koppling/mekanism/interaktion mellan dem som INTE står i något av
+     utdragen.
+  5. Dömning: SAMMA redan validerade tvåstegsmaskineri som D-019/D-025:s sond, oförändrat
+     — Nivå 1 (`judge_coverage`, är kopplingen redan täckt i korpusen?) + Nivå 2
+     (`classify_scenario`, är den icke-trivial?). `survives` = samma kriterium som sonden.
+  6. Jämförelse: överlevnadsgrad mot D-025:s redan insamlade random-kohort (120
+     påståenden, ingen ny baslinjekörning).
+- **Förbjudet:** välja klusterpar efter att ha sett vilken koppling de genererar; justera
+  K eller avståndströskeln efter utfallet.
+- **Kostnad:** litet — ~6–8 par × (1 genereringsanrop + 2 domaranrop) ≈ 18–24 LLM-anrop.
+- **Beslutat av:** Vincent.
+- **Påverkar:** ny analys-modul. Ändrar inte D-025/D-026.
+- **STATUS: GODKÄNT av Vincent 2026-07-19, körning påbörjas omedelbart.**
+
+**Resultat (2026-07-19):** 8 klusterpar (K=8 täta kluster på C1, cosine-avstånd
+0,710–0,861), 8 genererade bisociations-påståenden, 8 domda med Nivå 1+2 oförändrade.
+
+- **0/8 överlevde.** Samtliga 8 dömdes `not_covered` (genuint frånvarande — enligt design)
+  men **`trivial` vid Nivå 2, utan undantag.**
+- Samtliga 8 rationale konvergerade oberoende på EXAKT samma felmod: **"mechanical
+  merge"** — samma etikett som redan finns som en av de fem kalibreringsexemplen i
+  `domain_adapter.py` (D-021). Exempel (kluster 1↔3, gravida kvinnor + smittskydd):
+  "This is a mechanical merge of two domains... invokes 'pregnant women' and 'heightened
+  susceptibility' as a confidence signal, but makes no concrete, verifiable claim about
+  what the corpus actually lacks." Samma mönster upprepas ordagrant i alla 8 (byt bara
+  ut vilka två teman som slås ihop).
+- Jämförelse: D-025:s random-kohort hade 60,8 % icke-trivial-andel på enskilda
+  gles-regioner. Bisociations-genereringen ger **0 % icke-trivial-andel** på 8 försök —
+  en total, konsekvent kollaps, inte en gradvis försämring.
+- **Tolkning:** Generatorn (Claude Haiku 4.5, samma modell som resten av projektet)
+  saknar, givet denna promptstruktur, förmåga att gå bortom ytlig domänsammanslagning
+  till en genuint icke-trivial bisociativ insikt — oavsett hur tematiskt avlägsna de två
+  källklustren är (avståndet varierade 0,710–0,861 utan att påverka utfallet). Detta är
+  INTE ett fynd om korpusens struktur (till skillnad från D-025/D-026) utan om
+  genereringsstegets förmåga som sådan — konsekvent med D-026:s Arm 2-fynd att
+  genereringssteget är svagt, nu bekräftat i en helt annan promptkonstruktion.
+- **STATUS: GENOMFÖRT 2026-07-19.** 0/8 överlevande, entydigt negativt. Rådata:
+  `.cache/d027_clusters_meta.json`, `.cache/d027_bisociation_result.json`.
+
+---
+
+## D-028 — Är D-027:s nollresultat en promptartefakt? Fyra prompt-varianter, samma par
+
+- **Datum:** 2026-07-19
+- **Kategori:** Metod / uppföljning av D-027
+- **Fråga:** D-027 gav 0/8 icke-triviala bisociationer, samtliga dömda "mechanical merge."
+  Beror det på att genererings-prompten inbjuder till associativ sammanslagning snarare
+  än att tvinga fram en genuin spänning/konflikt (Koestlers bisociationsbegrepp handlar om
+  kollision mellan ramar, inte mjuk blandning)? Testat med FYRA promptvarianter på SAMMA
+  8 klusterpar (ingen ny parselektion — utesluter att ett annat utfall bara beror på andra
+  par).
+- **Design:**
+  - **Prompt 0 (kontroll, replikering):** D-027:s ursprungliga `BISOCIATION_PROMPT_TEMPLATE`,
+    oförändrad.
+  - **Prompt A (praktisk konflikt):** "Consider a specific real-world case that falls
+    within the scope of BOTH Area A and Area B at the same time. Identify ONE concrete
+    way in which following Area A's guidance would practically undermine, complicate, or
+    contradict Area B's guidance for that same case... Name the exact requirement or
+    assumption in each area that conflicts... Avoid vague statements that the two areas
+    are simply 'related'..."
+  - **Prompt B (vad går sönder):** "Identify ONE specific requirement, procedure, or
+    assumption in Area A that becomes difficult, risky, or impossible to satisfy BECAUSE
+    of a constraint stated in Area B (or vice versa)... Name the exact requirement and the
+    exact constraint that conflicts with it..."
+  - **Prompt C (A + explicit anti-exempel):** Prompt A plus ett tillägg som explicit
+    förbjuder generiska samexistens-påståenden ("pregnant healthcare workers need both X
+    and Y") och kräver att en SPECIFIK åtgärd/dos/procedur/tidslinje namnges som skulle
+    behöva brytas mot.
+  - Samma 8 klusterpar (D-027, oförändrade), samma Nivå 1 + Nivå 2-domare, oförändrade.
+    4 prompter × 8 par = 32 genereringsanrop + 64 domaranrop = 96 anrop totalt.
+- **Förbjudet:** välja bort någon av de fyra prompterna, eller justera någon av dem,
+  efter att ha sett dess utfall.
+- **Kostnad:** större än D-027 (96 anrop mot 24) men fortfarande litet i absoluta tal,
+  samma modell (Haiku 4.5).
+- **Beslutat av:** Vincent.
+- **Påverkar:** utökning av `analysis/d027_bisociation.py` eller ny modul. Ändrar inte
+  D-027:s redan rapporterade 0/8.
+- **STATUS: GODKÄNT av Vincent 2026-07-19, körning påbörjas omedelbart.**
+
+**Resultat (2026-07-19), 4 promptvarianter × 8 par (samma par som D-027):**
+
+| Prompt | Överlevde | |
+|---|---|---|
+| 0 (D-027 original, replikerad) | 0/8 | bekräftar D-027 |
+| A (praktisk konflikt) | 1/8 | marginell |
+| B (vad går sönder) | 0/8 | ingen förbättring |
+| C (A + explicit anti-exempel) | **3/8** | tydlig förbättring |
+
+- **Prompten var (delvis) fel.** D-027:s nollresultat var inte enbart en fundamental
+  generatorbegränsning — en riktad promptändring (C) höjde överlevnadsgraden från 0/8 till
+  3/8 på SAMMA 8 klusterpar.
+- Skillnaden är inte bara kvantitativ: de 4 överlevande (A:1, C:3) skiljer sig
+  KATEGORISKT från D-027:s "mechanical merge"-mönster. De namnger konkreta, citerbara krav
+  ur båda områdena och en verifierbar operationell spänning (exempel, kluster 2↔3 prompt
+  C: gravid vårdpersonal beordrad till HAI-övervakningsronder ↔ graviditets-säkerhetsråd om
+  begränsad exponering/fysisk belastning — en namngiven, kontrollerbar konflikt). Domarens
+  egna motiveringar skiftar genomgående från "makes no concrete, verifiable claim" (D-027)
+  till "not a mechanical merge... checkable against the actual text" (D-028 prompt C).
+- **Vad som fungerade:** den explicita anti-exempel-instruktionen (förbjuder generiska
+  samexistens-påståenden, kräver namngiven specifik åtgärd/dos/procedur i konflikt) var
+  den avgörande komponenten — inte konfliktramen ensam (prompt A och B gav i sig knappt
+  någon förbättring över baslinjen).
+- **Brasklapp:** temperature=0,7, n=8 per villkor — låg n, ett enskilt extra utfall väger
+  tungt rent kvantitativt (prompt A:s 1/8 är svårskilt från brus på egen hand). Det som gör
+  C:s 3/8 övertygande är den kvalitativa skillnaden i domarmotiveringarna, inte bara
+  räknevärdet. En större, replikerad körning skulle krävas för att kvantifiera säkert.
+- **STATUS: GENOMFÖRT 2026-07-19.** Rådata: `.cache/d028_prompt_variants_result.json`.
+
+---
+
 *Steg 0 (byggspec Del C) genomfört: Del B (D-001) + D-002–D-009 incheckade. D-010 tillagt
 2026-07-13 (Steg 0.5-genomförande). D-011 tillagt 2026-07-13 (graderat leave-one-out-mått).
 D-004 RESOLVED 2026-07-13 (k blir per-korpus-parameter — facit över alla tre korpusar). D-012
@@ -1106,3 +1338,23 @@ kalibrerades på pairwise chunk-chunk-similaritet medan Nivå 1 gör en max-öve
 (FÖRSLAG) tillagt 2026-07-18 (omkalibrera Nivå 1-tröskeln på claim-mot-chunk-ankare, H3) — EJ
 FATTAT. Ingen d̂ beräknad (degenererat Nivå 1 tolkas aldrig). Nästa steg: Claude Code föreslår
 ankar-konstruktion för D-021, Vincent granskar och låser.*
+
+---
+
+## Slutstatus 2026-11-11
+
+*Tillagt 2026-11-11 (append-only). Sidfoten ovan är inaktuell och lämnas orörd; detta avsnitt
+gäller som slutstatus.*
+
+- **D-026–D-028 genomförda 2026-07-19.**
+  - D-026 (associations-test): inkonklusivt relativt de tre förhandsdefinierade grenarna —
+    Arm 1b p=0,182 (ej signifikant), Arm 2 3/5 `not_recovered`; både detektions- och
+    genereringssteget svaga.
+  - D-027 (bisociation mellan täta kluster): 0/8 överlevande, samtliga "mechanical merge".
+  - D-028 (fyra promptvarianter, samma 8 par): 0/8, 1/8, 0/8, 3/8 (prompt C); låg n, se
+    brasklapp i D-028.
+- **PoC-rapport skriven:** `Mapping_the_Negative_Space_PoC_Report.md` (täcker D-001–D-026;
+  D-027 och D-028 ingår inte i rapporten). Huvudresultatet är negativt: C1-sonden gav
+  d̂ = −0,208, 95 % KI [−0,387, −0,029], p = 0,024 (D-025/D-026, enligt rapportens abstract).
+- **Iteration 2 är avslutad.** Inga fler D-beslut fattas i denna logg.
+- **Fortsättning:** iteration 3, *Bridging the Void*, i eget repo med egen beslutslogg.
